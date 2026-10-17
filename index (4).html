@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Isyarat Kita - Penerjemah Bahasa Isyarat</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--tx:#1b1f2a;--mut:#6b7280;--pri:#2563eb;--bd:#e5e7eb}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1219;--card:#1a1f2b;--tx:#eef1f7;--mut:#9aa3b2;--pri:#5b8cff;--bd:#2b3242}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--tx);padding:12px;max-width:720px;margin:auto}
+h1{font-size:1.3rem;margin:8px 0}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin:12px 0}
+.tabs{display:flex;gap:8px}
+.tabs button{flex:1}
+button{background:var(--pri);color:#fff;border:0;border-radius:10px;padding:10px 14px;font-size:1rem}
+button.alt{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+button.on{outline:2px solid var(--pri)}
+video,canvas{width:100%;border-radius:12px;background:#000}
+.wrap{position:relative}
+.wrap canvas{position:absolute;inset:0;height:100%;background:transparent}
+.wrap video,.wrap canvas{transform:scaleX(-1)}
+#hasil{font-size:1.4rem;min-height:2em;padding:8px;border:1px dashed var(--bd);border-radius:10px;margin:8px 0}
+textarea{width:100%;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);padding:10px;font-size:1rem}
+#player{min-height:180px;display:flex;align-items:center;justify-content:center;text-align:center}
+#player video{max-height:260px}
+.big{font-size:5rem;font-weight:700;color:var(--pri)}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{padding:6px;border-bottom:1px solid var(--bd);text-align:left}
+.box{overflow-x:auto}
+small{color:var(--mut)}
+.hide{display:none}
+</style>
+</head>
+<body>
+<h1>🤟 Isyarat Kita</h1>
+<small>Penerjemah bahasa isyarat ⇄ Bahasa Indonesia (beta)</small>
+
+<div class="card tabs">
+  <button id="t1" class="on">📷 Isyarat → Teks</button>
+  <button id="t2" class="alt">⌨️ Teks → Isyarat</button>
+</div>
+
+<div id="p1" class="card">
+  <div class="wrap"><video id="cam" playsinline muted></video><canvas id="ov"></canvas></div>
+  <p><button id="start">Izinkan Kamera & Mulai</button> <button id="clear" class="alt">Hapus</button></p>
+  <div id="hasil">—</div>
+  <button id="speak1" class="alt">🔊 Bacakan</button> <button id="save1" class="alt">💾 Simpan ke tabel</button>
+  <details style="margin:12px 0"><summary><b>🧠 Latih AI (ajari isyarat)</b></summary>
+  <p><small>Ajari AI langsung lewat kamera, idealnya diperagakan penutur isyarat asli. Ulangi ±10x per huruf/kata dengan posisi sedikit berbeda.</small></p>
+  <p><input id="lab" placeholder="Huruf / kata, mis: A atau terima kasih" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx)"></p>
+  <p><button id="rs" class="alt">⏺ Rekam pose diam (huruf/angka)</button></p>
+  <p><button id="rg" class="alt">⏺ Rekam gerakan (kata)</button></p>
+  <p><small id="lat"></small><br><small id="hit"></small></p></details>
+  <p><small id="status">Kamera belum aktif.</small><br><small id="live">Terbaca: —</small></p>
+  <p><small>⚠️ Hasil bisa keliru. Jangan diandalkan untuk situasi darurat atau medis.</small></p>
+</div>
+
+<div id="p2" class="card hide">
+  <textarea id="inp" rows="2" placeholder="Ketik kata/kalimat, contoh: halo"></textarea>
+  <p><button id="go">▶ Tampilkan Isyarat</button></p>
+  <div id="player"><small>Video isyarat muncul di sini.</small></div>
+  <div id="ytlist"></div>
+  <hr style="border:0;border-top:1px solid var(--bd);margin:14px 0">
+  <b>➕ Tambah video isyarat</b><br><small>Peragakan isyarat untuk satu kata/huruf (idealnya oleh penutur isyarat asli).</small>
+  <p><input id="kata" placeholder="kata, mis: halo" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx)"></p>
+  <video id="prev" class="hide" playsinline muted style="transform:scaleX(-1)"></video>
+  <p><button id="rekam" class="alt">⏺ Rekam</button> <small id="rst"></small></p>
+  <hr style="border:0;border-top:1px solid var(--bd);margin:14px 0">
+  <b>▶ Atau pakai video YouTube</b><br><small>Pakai kolom "kata" di atas. Isi link, lalu detik mulai &amp; selesai potongan isyaratnya.</small>
+  <p><input id="yt" placeholder="Link YouTube" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx)"></p>
+  <p><input id="ys" type="number" placeholder="Mulai (detik)" style="width:48%;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx)">
+  <input id="ye" type="number" placeholder="Selesai (detik)" style="width:48%;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx)"></p>
+  <p><button id="ytsimpan" class="alt">💾 Simpan dari YouTube</button></p>
+</div>
+
+<div class="card">
+  <b>Tabel Tulisan & Suara</b> <small id="db"></small>
+  <div class="box"><table><thead><tr><th>Waktu</th><th>Arah</th><th>Teks</th><th>Suara</th></tr></thead><tbody id="tb"></tbody></table></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script type="module">
+/* ====== KONFIGURASI SUPABASE (isi punya lu) ======
+ SQL (jalankan di Supabase > SQL Editor):
+ create table riwayat(id bigint generated always as identity primary key, arah text, teks text, created_at timestamptz default now());
+ create table kamus(kata text primary key, video_url text);
+ alter table riwayat enable row level security; alter table kamus enable row level security;
+ create policy "baca" on riwayat for select using(true); create policy "tulis" on riwayat for insert with check(true);
+ create policy "baca2" on kamus for select using(true);
+ Storage + izin rekam (jalankan juga di SQL Editor):
+ insert into storage.buckets(id,name,public) values('isyarat','isyarat',true) on conflict do nothing;
+ create policy "s_sel" on storage.objects for select using(bucket_id='isyarat');
+ create policy "s_ins" on storage.objects for insert with check(bucket_id='isyarat');
+ create policy "s_upd" on storage.objects for update using(bucket_id='isyarat');
+ create policy "k_ins" on kamus for insert with check(true);
+ create policy "k_upd" on kamus for update using(true); */
+const SUPABASE_URL = "https://dqooniabngidwvxwkevh.supabase.co";      // https://xxxx.supabase.co
+const SUPABASE_KEY = "sb_publishable_yjHRaILgYoBUgOCJxf7aCw_0DIixl01";      // anon public key
+const VIDEO_BASE   = "";      // https://xxxx.supabase.co/storage/v1/object/public/isyarat
+const YT_KEY     = "AIzaSyDrNb-nd5vxvr6cPbnb0xLVLnzQvKZj5zU";      // API key YouTube Data API v3 (cara buatnya dijelaskan Claude)
+const YT_CHANNEL = "";      // opsional: ID kanal terpercaya (diawali UC...) supaya hasil hanya dari kanal itu
+
+const $ = id => document.getElementById(id);
+const sb = (SUPABASE_URL && SUPABASE_KEY && window.supabase) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+$("db").textContent = sb ? "(tersambung Supabase)" : "(mode lokal, Supabase belum diisi)";
+
+/* ---------- Tabel & suara ---------- */
+function bicara(t){
+  if(!t||t==="—")return;
+  if(speechSynthesis.speaking||speechSynthesis.pending) speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(t); u.lang="id-ID"; u.rate=1.1;
+  const v=speechSynthesis.getVoices().find(x=>x.lang.replace("_","-")==="id-ID"); if(v)u.voice=v;
+  speechSynthesis.speak(u);
+}
+async function simpan(arah, teks){
+  if(!teks||teks==="—")return;
+  if(sb){ await sb.from("riwayat").insert({arah,teks}); }
+  else { const l=JSON.parse(localStorage.getItem("riwayat")||"[]"); l.unshift({arah,teks,created_at:new Date().toISOString()}); localStorage.setItem("riwayat",JSON.stringify(l.slice(0,50))); }
+  muat();
+}
+async function muat(){
+  let rows=[];
+  if(sb){ const r=await sb.from("riwayat").select("*").order("created_at",{ascending:false}).limit(30); rows=r.data||[]; }
+  else rows=JSON.parse(localStorage.getItem("riwayat")||"[]");
+  $("tb").innerHTML="";
+  rows.forEach(r=>{
+    const tr=document.createElement("tr");
+    const w=new Date(r.created_at).toLocaleString("id-ID",{dateStyle:"short",timeStyle:"short"});
+    [w,r.arah,r.teks].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td);});
+    const td=document.createElement("td"),b=document.createElement("button");
+    b.textContent="🔊";b.className="alt";b.onclick=()=>bicara(r.teks);td.appendChild(b);tr.appendChild(td);
+    $("tb").appendChild(tr);
+  });
+}
+muat();
+
+/* ---------- Tab ---------- */
+function tab(n){ $("p1").classList.toggle("hide",n!==1); $("p2").classList.toggle("hide",n!==2);
+  $("t1").className=n===1?"on":"alt"; $("t2").className=n===2?"on":"alt"; }
+$("t1").onclick=()=>tab(1); $("t2").onclick=()=>tab(2);
+
+/* ---------- Isyarat -> Teks (MediaPipe Hand Landmarker) ---------- */
+let teks="", landmarker, jalan=false, last="", cnt=0, sudah=false;
+const d=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+function klasifikasi(h){
+  const w=h[0], palm=d(h[0],h[9]);
+  const ext=(t,p)=>d(h[t],w)>d(h[p],w)*1.08;      // jari terbuka (tidak tergantung arah tangan)
+  const idx=ext(8,6), mid=ext(12,10), rng=ext(16,14), pnk=ext(20,18);
+  const jempol=d(h[4],h[17])>d(h[3],h[17])*1.1 || d(h[4],h[5])>palm*0.9;
+  const naik=h[4].y<h[3].y && h[4].y<h[5].y && d(h[4],h[5])>palm*0.6;
+  const n=[idx,mid,rng,pnk].filter(Boolean).length;
+  if(n===4&&jempol) return "Halo";
+  if(n===4) return "Angka 4";
+  if(idx&&mid&&rng) return "Angka 3";
+  if(idx&&mid) return "Angka 2";
+  if(idx&&pnk&&jempol&&!mid&&!rng) return "Aku sayang kamu";
+  if(idx&&jempol&&!mid&&!rng&&!pnk&&d(h[4],h[5])>palm*0.6) return "L";
+  if(idx&&!mid&&!rng&&!pnk) return "Angka 1";
+  if(pnk&&!idx&&!mid&&!rng) return jempol&&d(h[4],h[5])>palm*0.6?"Y":"I";
+  if(n===0) return naik?"Bagus":"A";
+  return "";
+}
+function tampil(){ $("hasil").textContent=teks||"—"; }
+async function mulai(){
+  $("status").textContent="Memuat model...";
+  speechSynthesis.getVoices(); speechSynthesis.speak(new SpeechSynthesisUtterance(""));  // pemanasan suara
+  try{
+    const v=await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs");
+    const fs=await v.FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+    landmarker=await v.HandLandmarker.createFromOptions(fs,{baseOptions:{modelAssetPath:"https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",delegate:"GPU"},runningMode:"VIDEO",numHands:2});
+    const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:480},height:{ideal:360},frameRate:{ideal:24}}});
+    $("cam").srcObject=s; await $("cam").play(); jalan=true; $("status").textContent="Arahkan telapak/tangan ke kamera, tahan ±0,5 detik."; loop();
+  }catch(e){ $("status").textContent="Gagal: "+e.message+" (butuh HTTPS & izin kamera)"; }
+}
+/* ---------- Mesin pengenal: belajar dari sampel (pose diam + gerakan) ---------- */
+const AMB_S=0.35, AMB_G=0.5, AMB_GERAK=0.06;   // ambang; bisa disetel sesuai uji lapangan
+const HUB=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+let SS=[], SG=[], buf=[], prev=null, diam=0, modeL=null, rek=[];
+function fitur(hands){
+  const f=[];
+  for(let i=0;i<2;i++){
+    const h=hands[i];
+    if(!h){ for(let j=0;j<44;j++)f.push(0); continue; }
+    const w=h[0], sc=Math.hypot(h[9].x-w.x,h[9].y-w.y)||1;
+    h.forEach(p=>f.push((p.x-w.x)/sc,(p.y-w.y)/sc)); f.push(w.x*3,w.y*3);
+  }
+  return f;
+}
+function rms(a,b,pos){
+  let s=0,n=0;
+  for(let i=0;i<a.length;i++){ if(!pos&&(i%44)>=42)continue; const t=a[i]-b[i]; s+=t*t; n++; }
+  return Math.sqrt(s/n);
+}
+function cocok(v,list,pos,amb){
+  const t=list.map(x=>({l:x.l,d:rms(v,x.v,pos)})).sort((a,b)=>a.d-b.d).slice(0,3);
+  if(!t.length||t[0].d>amb) return null;
+  const c={}; t.forEach(x=>c[x.l]=(c[x.l]||0)+1/(x.d+.05));
+  return {l:Object.keys(c).sort((a,b)=>c[b]-c[a])[0], d:t[0].d};
+}
+function potong(b){
+  const i=b.map((x,k)=>x.m?k:-1).filter(k=>k>=0); if(!i.length) return [];
+  return b.slice(Math.max(0,i[0]-2),Math.min(b.length,i[i.length-1]+3));
+}
+function ratakan(seg,n=16){
+  const o=[];
+  for(let i=0;i<n;i++){ const x=i*(seg.length-1)/(n-1), a=Math.floor(x), b=Math.min(a+1,seg.length-1), t=x-a;
+    o.push(seg[a].v.map((u,j)=>u*(1-t)+seg[b].v[j]*t)); }
+  return o.flat();
+}
+function masuk(l){ teks+=(teks?" ":"")+l; tampil(); bicara(l); }
+function kenalGerak(){
+  if(!SG.length) return;
+  const seg=potong(buf); if(seg.length<8) return;
+  const m=cocok(ratakan(seg),SG,true,AMB_G);
+  $("live").textContent="Terbaca: "+(m?m.l+" ("+m.d.toFixed(2)+")":"…");
+  if(m) masuk(m.l);
+}
+function proses(hands){
+  if(!hands.length){
+    if(buf.some(x=>x.m)&&!modeL) kenalGerak();
+    buf=[]; prev=null; diam=0; last=""; cnt=0; sudah=false;
+    $("live").textContent="Terbaca: (tangan tidak terlihat)"; return;
+  }
+  const v=fitur(hands), dif=prev?rms(v,prev,true):0, gerak=dif>AMB_GERAK; prev=v;
+  buf.push({v,m:gerak}); if(buf.length>120)buf.shift();
+  if(modeL) rek.push({v,m:gerak});
+  diam=gerak?0:diam+1;
+  if(diam===6&&!modeL&&buf.some(x=>x.m)){ kenalGerak(); buf=[]; }
+  if(gerak){ $("live").textContent="Terbaca: … (bergerak)"; last=""; cnt=0; sudah=false; return; }
+  let k=null, info="";
+  if(SS.length){ const m=cocok(v,SS,false,AMB_S); if(m){k=m.l; info=" ("+m.d.toFixed(2)+")";} }
+  else if(!SG.length) k=klasifikasi(hands[0]);
+  $("live").textContent="Terbaca: "+(k||"…")+info;
+  if(k&&k===last){ cnt++; if(cnt>=5&&!sudah&&!modeL){ sudah=true; masuk(k); } }
+  else{ last=k||""; cnt=0; sudah=false; }
+}
+function loop(){
+  if(!jalan)return;
+  const vid=$("cam"), c=$("ov");
+  if(c.width!==vid.videoWidth){c.width=vid.videoWidth;c.height=vid.videoHeight;}
+  const g=c.getContext("2d"); g.clearRect(0,0,c.width,c.height);
+  const r=landmarker.detectForVideo(vid,performance.now());
+  const hands=(r.landmarks||[]).slice().sort((a,b)=>a[0].x-b[0].x);
+  g.strokeStyle="#22c55e"; g.lineWidth=3; g.fillStyle="#f59e0b";
+  hands.forEach(h=>{
+    g.beginPath(); HUB.forEach(([a,b])=>{g.moveTo(h[a].x*c.width,h[a].y*c.height);g.lineTo(h[b].x*c.width,h[b].y*c.height);}); g.stroke();
+    h.forEach(p=>{g.beginPath();g.arc(p.x*c.width,p.y*c.height,4,0,7);g.fill();});
+  });
+  proses(hands);
+  vid.requestVideoFrameCallback?vid.requestVideoFrameCallback(loop):requestAnimationFrame(loop);
+}
+
+/* ---------- Simpan & muat sampel latih ---------- */
+const lat=t=>{$("lat").textContent=t;};
+const lab=()=>{const l=$("lab").value.trim(); return l.length===1?l.toUpperCase():l.toLowerCase();};
+function hitung(){
+  const c={}; [...SS,...SG].forEach(x=>{const k=x.l+(x.t==="g"?"*":""); c[k]=(c[k]||0)+1;});
+  $("hit").textContent=Object.keys(c).length?"Sampel: "+Object.entries(c).map(([k,n])=>k+":"+n).join("  ")+"   (* = gerakan)":"Belum ada sampel, AI memakai aturan dasar.";
+}
+async function simpanSampel(l,t,vs){
+  const rows=vs.map(v=>({label:l,tipe:t,data:v.map(x=>+x.toFixed(3))}));
+  rows.forEach(r=>(t==="s"?SS:SG).push({l,t,v:r.data}));
+  if(sb){ const e=(await sb.from("sampel").insert(rows)).error; if(e) lat("Gagal simpan ke Supabase: "+e.message); }
+  else{ try{localStorage.setItem("sampel",JSON.stringify([...SS,...SG]));}catch(e){} }
+  hitung();
+}
+async function muatSampel(){
+  let rows=[];
+  try{
+    if(sb){ for(let i=0;;i+=1000){ const r=await sb.from("sampel").select("label,tipe,data").range(i,i+999);
+      if(r.error||!r.data) break; rows.push(...r.data.map(x=>({l:x.label,t:x.tipe,v:x.data}))); if(r.data.length<1000)break; } }
+    else rows=JSON.parse(localStorage.getItem("sampel")||"[]");
+  }catch(e){}
+  SS=rows.filter(x=>x.t==="s"); SG=rows.filter(x=>x.t==="g"); hitung();
+}
+$("rs").onclick=()=>{
+  if(!jalan) return lat("Nyalakan kamera dulu."); if(!lab()) return lat("Isi huruf/kata dulu.");
+  rek=[]; modeL="s"; lat("Tahan pose ... merekam 1,5 detik");
+  setTimeout(async()=>{
+    const rows=rek.filter((x,i)=>!x.m&&i%3===0).map(x=>x.v); modeL=null;
+    if(rows.length<3) return lat("Tangan tidak terbaca stabil, ulangi.");
+    await simpanSampel(lab(),"s",rows); lat("Tersimpan "+rows.length+" sampel '"+lab()+"' ✔ (ulangi ±10x)");
+  },1500);
+};
+$("rg").onclick=async()=>{
+  if(modeL==="g"){
+    modeL=null; $("rg").textContent="⏺ Rekam gerakan (kata)";
+    const seg=potong(rek); if(seg.length<8) return lat("Gerakan tidak terbaca/terlalu singkat, ulangi.");
+    await simpanSampel(lab(),"g",[ratakan(seg)]); return lat("Gerakan '"+lab()+"' tersimpan ✔ (ulangi ±10x)");
+  }
+  if(!jalan) return lat("Nyalakan kamera dulu."); if(!lab()) return lat("Isi kata dulu.");
+  rek=[]; modeL="g"; $("rg").textContent="⏹ Stop & Simpan"; lat("Peragakan gerakannya, lalu tekan Stop.");
+};
+muatSampel();
+$("start").onclick=mulai;
+$("clear").onclick=()=>{teks="";tampil();};
+$("speak1").onclick=()=>bicara(teks);
+$("save1").onclick=()=>simpan("Isyarat→Teks",teks);
+
+/* ---------- Teks -> Isyarat (video dari kamus Supabase) ---------- */
+function pesan(t){ $("player").textContent=t; }
+function putarVideo(url){
+  return new Promise(res=>{
+    if(/youtube\.com\/watch/.test(url)){
+      const q=new URL(url).searchParams, id=q.get("v"), a=+q.get("start")||0, b=+q.get("end")||a+5;
+      const f=document.createElement("iframe");
+      f.src=`https://www.youtube-nocookie.com/embed/${id}?start=${a}&end=${b}&autoplay=1&mute=1&rel=0&playsinline=1`;
+      f.allow="autoplay; encrypted-media"; f.style.cssText="width:100%;aspect-ratio:16/9;border:0;border-radius:12px";
+      $("player").innerHTML=""; $("player").appendChild(f);
+      setTimeout(()=>res(true),(b-a+2)*1000);
+      return;
+    }
+    const v=document.createElement("video"); v.src=url; v.autoplay=true; v.muted=true; v.playsInline=true; v.controls=true;
+    v.onended=()=>res(true); v.onerror=()=>res(false);
+    $("player").innerHTML=""; $("player").appendChild(v); v.play().catch(()=>res(false));
+  });
+}
+function linkYT(k){
+  const a=document.createElement("a"); a.target="_blank"; a.rel="noopener";
+  a.href="https://www.youtube.com/results?search_query="+encodeURIComponent("bahasa isyarat BISINDO "+k);
+  a.textContent='🔎 Cari "'+k+'" di YouTube'; a.style.cssText="display:block;margin:8px 0;color:var(--pri)";
+  $("ytlist").appendChild(a);
+}
+async function cariYT(k){
+  const ck="yt:"+k;
+  try{ const c=localStorage.getItem(ck); if(c) return JSON.parse(c); }catch(e){}
+  const q=new URLSearchParams({part:"snippet",type:"video",maxResults:"5",videoEmbeddable:"true",videoDuration:"short",relevanceLanguage:"id",regionCode:"ID",q:"bahasa isyarat BISINDO "+k,key:YT_KEY});
+  if(YT_CHANNEL) q.set("channelId",YT_CHANNEL);
+  const j=await (await fetch("https://www.googleapis.com/youtube/v3/search?"+q)).json();
+  if(j.error) throw new Error(j.error.message);
+  const ids=(j.items||[]).map(x=>x.id.videoId);
+  if(ids.length){ try{ localStorage.setItem(ck,JSON.stringify(ids)); }catch(e){} }
+  return ids;
+}
+function kartuYT(k,ids){
+  let i=0; const box=document.createElement("div"); box.style.margin="12px 0";
+  const lb=document.createElement("small"); lb.textContent='"'+k+'" — hasil pencarian YouTube (belum diverifikasi)';
+  const f=document.createElement("iframe"); f.allow="encrypted-media"; f.allowFullscreen=true;
+  f.style.cssText="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;margin:6px 0";
+  const set=()=>{f.src="https://www.youtube-nocookie.com/embed/"+ids[i]+"?rel=0&playsinline=1";};
+  const b=document.createElement("button"); b.className="alt"; b.textContent="Video lain ▶";
+  b.onclick=()=>{i=(i+1)%ids.length;set();};
+  set(); box.append(lb,document.createElement("br"),f,b); $("ytlist").appendChild(box);
+}
+async function isyarat(){
+  const t=$("inp").value.trim().toLowerCase(); if(!t)return;
+  if(!sb&&!YT_KEY) return pesan("Isi dulu konfigurasi Supabase atau YouTube di index.html.");
+  simpan("Teks→Isyarat",t);
+  const kata=t.split(/\s+/), huruf=[...new Set(kata.join("").replace(/[^a-z0-9]/g,"").split(""))];
+  const {data}=sb?await sb.from("kamus").select("kata,video_url").in("kata",[...new Set([...kata,...huruf])]):{data:[]};
+  const m={}; (data||[]).forEach(r=>m[r.kata]=r.video_url);
+  $("ytlist").innerHTML="";
+  const antri=[], hilang=[], yt=[]; let galat="";
+  for(const k of kata){
+    if(m[k]){ antri.push(m[k]); continue; }
+    let ids=[]; if(YT_KEY){ try{ ids=await cariYT(k); }catch(e){ galat=e.message; } }
+    if(ids.length){ yt.push([k,ids]); continue; }
+    const hs=k.replace(/[^a-z0-9]/g,"").split("");
+    if(hs.length&&hs.every(c=>m[c])) hs.forEach(c=>antri.push(m[c]));
+    else { hilang.push(k); linkYT(k); }
+  }
+  for(const u of antri) await putarVideo(u);
+  yt.forEach(([k,ids])=>kartuYT(k,ids));
+  pesan(yt.length?"Video dari YouTube ada di bawah 👇":hilang.length?"Belum ada video untuk: "+hilang.join(", ")+(galat?" ("+galat+")":""):"Selesai ✔");
+}
+$("go").onclick=isyarat;
+
+/* ---------- Rekam video isyarat baru ---------- */
+let rec, chunks=[], stream2;
+$("rekam").onclick=async()=>{
+  if(rec&&rec.state==="recording"){rec.stop();return;}
+  if(!sb) return $("rst").textContent="Isi konfigurasi Supabase dulu.";
+  const k=$("kata").value.trim().toLowerCase(); if(!k) return $("rst").textContent="Isi kata dulu.";
+  const path=k.replace(/[^a-z0-9]/g,"_")+".webm";
+  try{
+    stream2=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false});
+    const pv=$("prev"); pv.srcObject=stream2; pv.classList.remove("hide"); await pv.play();
+    chunks=[]; rec=new MediaRecorder(stream2); rec.ondataavailable=e=>chunks.push(e.data);
+    rec.onstop=async()=>{
+      stream2.getTracks().forEach(x=>x.stop()); pv.srcObject=null; pv.classList.add("hide");
+      $("rekam").textContent="⏺ Rekam"; $("rst").textContent="Mengunggah...";
+      const blob=new Blob(chunks,{type:rec.mimeType||"video/webm"});
+      const up=await sb.storage.from("isyarat").upload(path,blob,{upsert:true,contentType:blob.type});
+      if(up.error) return $("rst").textContent="Gagal unggah: "+up.error.message;
+      const url=sb.storage.from("isyarat").getPublicUrl(path).data.publicUrl;
+      const db=await sb.from("kamus").upsert({kata:k,video_url:url});
+      $("rst").textContent=db.error?"Gagal simpan: "+db.error.message:"Tersimpan ✔ "+k;
+    };
+    rec.start(); $("rekam").textContent="⏹ Stop & Simpan"; $("rst").textContent="Merekam... peragakan isyarat.";
+  }catch(e){ $("rst").textContent="Gagal: "+e.message; }
+};
+
+$("ytsimpan").onclick=async()=>{
+  if(!sb) return $("rst").textContent="Isi konfigurasi Supabase dulu.";
+  const k=$("kata").value.trim().toLowerCase(), m=$("yt").value.match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([\w-]{11})/);
+  const a=Math.max(0,parseInt($("ys").value)||0), b=parseInt($("ye").value)||0;
+  if(!k||!m) return $("rst").textContent="Isi kata dan link YouTube yang benar.";
+  if(b<=a) return $("rst").textContent="Detik selesai harus lebih besar dari detik mulai.";
+  const db=await sb.from("kamus").upsert({kata:k,video_url:`https://www.youtube.com/watch?v=${m[1]}&start=${a}&end=${b}`});
+  $("rst").textContent=db.error?"Gagal simpan: "+db.error.message:"Tersimpan ✔ "+k;
+};
+</script>
+</body>
+</html>
